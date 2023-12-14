@@ -1,0 +1,6 @@
+[submodule "modules/pypsg"]
+	path = modules/pypsg
+	url = https://github.com/mdhimes/pypsg
+[submodule "modules/LISA"]
+	path = modules/LISA
+	url = https://github.com/exosports/LISA
