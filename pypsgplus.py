@@ -23,11 +23,11 @@ def main(cfg):
            wav, data, uncert, filters, algorithm, alg_kwargs, \
            PTfunc, nPT, Tmin, Tmax, \
            ncores, psg_url, api_key, pypsg_timeout, verb = C.load_config(cfg)
-    retrieved = driver(basecfg, outputdir, pnames, pmin, pmax, log, 
+    retriever = driver(basecfg, outputdir, pnames, pmin, pmax, log, 
                        wav, data, uncert, filters, algorithm, alg_kwargs, 
                        PTfunc, nPT, Tmin, Tmax, 
                        ncores, psg_url, api_key, pypsg_timeout, verb)
-    return retrieved
+    return retriever
 
 
 def driver(basecfg, outputdir, pnames, pmin, pmax, log, 
@@ -94,6 +94,7 @@ def driver(basecfg, outputdir, pnames, pmin, pmax, log,
     time_end = U.tprint("Retrieval complete")
     tot_time = U.time_elapsed(time_start, time_end)
     print("Total time elapsed:", tot_time)
+    return retriever
 
 
 if __name__ == '__main__':
