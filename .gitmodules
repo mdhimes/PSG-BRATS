@@ -4,3 +4,6 @@
 [submodule "modules/LISA"]
 	path = modules/LISA
 	url = https://github.com/exosports/LISA
+[submodule "data"]
+	path = data
+	url = https://github.com/mdhimes/TEAgrid
