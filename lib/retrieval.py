@@ -106,14 +106,20 @@ class pyspgRetrieval:
         self.wavelength = self.run_forward(self.config)['spectrum'][:,0]
 
         if self.filters is not None:
+            if self.verb:
+                U.tprint("Preparing filters...")
             # Interpolate the filters onto the same wavelength grid
             for i in range(len(self.filters)):
                 filt_wavl = self.filters[i][:,0]
                 filt_tran = self.filters[i][:,1]
-                f = si.interp1d(filt_wavl, filt_tran, fill_value=0.)
+                f = si.interp1d(filt_wavl, filt_tran, fill_value=0., bounds_error=False)
+                self.filters[i] = np.zeros((self.wavelength.size, 2))
                 self.filters[i][:,0] =   self.wavelength
                 self.filters[i][:,1] = f(self.wavelength)
                 self.filters[i][:,1] /= self.filters[i][:,1].max() # Normalize the filters
+        else:
+            if self.verb:
+                U.tprint("No filters provided.  Assuming the data's wavelength grid matches the forward model's wavelength grid exactly.")
 
         # Load pressure grid, if needed
         if any(x in self.pnames for x in U.pt_keys):
@@ -185,9 +191,11 @@ class pyspgRetrieval:
         # Set up functions for the inference and add to kwargs
         if algorithm in ['dnest4', 'dream', 'dynesty', 'emcee', 'multinest', 'polychord', 'ultranest']:
             self.prior = functools.partial(getattr(AF, algorithm+'_prior'), pmin=self.pmin, pmax=self.pmax)
-            loglike_kwargs = {'data' : self.data, 'uncert' : self.uncert, 'model' : self.forward_model}
+            loglike_kwargs = {'data' : self.data, 
+                              'uncert' : self.uncert, 
+                              'model' : self.forward_model}
             if algorithm == 'emcee':
-                loglike_kwargs['prior'] = prior
+                loglike_kwargs['prior'] = self.prior
             self.loglike = functools.partial(getattr(AF, algorithm+'_loglikelihood'), **loglike_kwargs)
             self.alg_kwargs['prior'] = self.prior
             self.alg_kwargs['loglike'] = self.loglike

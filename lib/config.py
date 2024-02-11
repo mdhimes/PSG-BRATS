@@ -9,6 +9,7 @@ load_algorithm_kwargs: helper function to load configuration file options relate
 
 import sys, os
 import configparser
+import glob
 import numpy as np
 from inspect import signature
 
@@ -56,7 +57,10 @@ def load_config(cfg):
                 data    = np.array([float(p) for p in conf['data']  .split()])
                 uncert  = np.array([float(p) for p in conf['uncert'].split()])
             try:
-                filter_files = conf['filters'].split()
+                filter_files = conf['filters'].split('\n')
+                if len(filter_files) == 1:
+                    # Directory of files
+                    filter_files = sorted(glob.glob(os.path.join(filter_files[0], '*')))
                 assert len(filter_files) == data.size, "Received "+str(len(filter_files))+" filter files, but "+\
                                                        "the provided data array has "+str(data.size)+" elements."
                 filters = []
@@ -144,7 +148,7 @@ def load_algorithm_kwargs(conf, algorithm):
                                          "but it is not found in the supplied"+\
                                          " configuration file."
             continue
-        if not np.any([v.isalpha() for v in val if v is not 'e']):
+        if not np.any([v.isalpha() for v in val if v != 'e']):
             # Not a simple string - load the value
             try:
                 # simple value?
