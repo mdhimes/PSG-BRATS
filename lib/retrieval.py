@@ -12,7 +12,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.interpolate as si
 
-import lisa
 import pypsg
 
 import alg_funcs as AF
@@ -27,7 +26,7 @@ class pyspgRetrieval:
                        wav, data, uncert, filters, algorithm, alg_kwargs, 
                        PTfunc=None, nPT=0, Tmin=None, Tmax=None, 
                        psgserver='http://localhost:3000/api.php', api_key=None, pypsg_timeout=120,
-                       ncores=1, outputdir='./output', verb=1):
+                       pool=None, outputdir='./output', verb=1):
         """
         Inputs
         ------
@@ -55,8 +54,7 @@ class pyspgRetrieval:
                          Default: None
         pypsg_timeout: int. Maximum number of seconds to wait for pypsg to receive a response 
                             from PSG before raising a timeout error.
-        ncores: int. Number of parallel cores to use when building and running configuration files.
-                     Default: 1 (Recommended maximum: 1/4 of the machine's total cores)
+        pool: multiprocessing pool object.  Pool to be used for parallel evaluations.
         outputdir: string. Output directory to save configuration files/grids (if applicable).
                         Default: current directory.
         verb: int. Controls verbosity of output.
@@ -86,7 +84,6 @@ class pyspgRetrieval:
         self.nPT        = nPT
         self.Tmin       = Tmin
         self.Tmax       = Tmax
-        self.ncores     = ncores
         self.outputdir  = outputdir
         self.verb       = verb
 
@@ -208,25 +205,25 @@ class pyspgRetrieval:
             self.alg_kwargs['data']   = self.data
             self.alg_kwargs['uncert'] = self.uncert
 
-        # Set up worker pool
-        self.pool = mp.Pool(self.ncores)
+        # Ensure there is a worker pool
+        if pool is not None:
+            self.pool = pool
+        else:
+            raise ValueError("Must supply a multiprocessing pool for workers.")
 
         self.alg_kwargs['model'] = self.forward_model
-
-        # Set up LISA object
-        self.samp = lisa.run(self.algorithm, **self.alg_kwargs)
 
     def __getstate__(self):
         self_dict = self.__dict__.copy()
         del self_dict['pool']
         return self_dict
 
-    def run_retrieval(self):
-        """
-        Helper method to run the Bayesian sampler and produce output plots.
-        """
-        self.samp.run()
-        self.samp.make_plots()
+    #def run_retrieval(self):
+    #    """
+    #    Helper method to run the Bayesian sampler and produce output plots.
+    #    """
+    #    self.samp.run()
+    #    self.samp.make_plots()
 
     def forward_model(self, params):
         """

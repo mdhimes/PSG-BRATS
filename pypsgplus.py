@@ -5,6 +5,8 @@ import functools
 import multiprocessing as mp
 import numpy as np
 
+import lisa
+
 sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
 import config as C
 import retrieval as R
@@ -84,11 +86,17 @@ def driver(basecfg, outputdir, pnames, pmin, pmax, log,
     # Initialize the retrieval
     if verb:
         time_start = U.tprint("Beginning retrieval\n")
+
+    pool = mp.Pool(ncores, maxtasksperchild=200)
     retriever = R.pyspgRetrieval(basecfg, pnames, pmin, pmax, log, 
                                  wav, data, uncert, filters, algorithm, alg_kwargs, 
                                  PTfunc, nPT, Tmin, Tmax, 
                                  psgserver=psg_url, api_key=api_key, pypsg_timeout=pypsg_timeout, 
-                                 ncores=ncores, outputdir=outputdir, verb=verb)
+                                 pool=pool, outputdir=outputdir, verb=verb)
+
+    # Set up LISA object
+    samp = lisa.run(retriever.algorithm, **retriever.alg_kwargs)
+    samp.make_plots()
 
     print("\n")
     time_end = U.tprint("Retrieval complete")
