@@ -2,6 +2,7 @@ import sys, os
 import copy
 import ctypes
 import functools
+import gc
 import glob
 import itertools
 import time
@@ -214,42 +215,49 @@ class pyspgRetrieval:
         self.alg_kwargs['model'] = self.forward_model
 
     def __getstate__(self):
+        """
+        Override normal __getstate__ functionality so that the object is pickle-able
+        """
         self_dict = self.__dict__.copy()
         del self_dict['pool']
         return self_dict
-
-    #def run_retrieval(self):
-    #    """
-    #    Helper method to run the Bayesian sampler and produce output plots.
-    #    """
-    #    self.samp.run()
-    #    self.samp.make_plots()
 
     def forward_model(self, params):
         """
         Helper method that updates the configuration file and runs PSG for it.  
         """
         params = np.atleast_2d(params)
-        return self.pool.map(self._worker, [params[i] for i in range(params.shape[0])])
+        # TODO: fix
+        # Allow workers to manually garbage collect to avoid memory issues
+        # It is unclear why the memory growth happens - it is stepwise, it happens at irregular intervals, 
+        # and I can't find what is actually causing that memory growth
+        # Manual garbage collection solves this but adds some overhead...worth it for the memory savings, 
+        # but it would be best to fix the underlying memory growth issue
+        gc.disable()
+        res = self.pool.map(self._worker, [params[i] for i in range(params.shape[0])])
+        gc.enable()
+        return res
 
     def _worker(self, params):
         """
         Worker function for calculating the forward model in parallel.
         """
+        pid = os.getpid()
         self.update_config(params)
-        ret = self.run_forward(self.config)['spectrum']
+        res = self.run_forward(self.config)['spectrum']
         if self.filters is None:
-            return ret[:,1]
+            ret = res[:,1] # Keep full resolution spectrum
         else:
             # Band integrate for each filter
-            bandint = np.zeros(len(self.filters), dtype=float)
+            ret = np.zeros(len(self.filters), dtype=float)
             for i in range(len(self.filters)):
                 inonzero = np.where(self.filters[i][:,1] > 0)[0]
-                bandint[i] = np.sum(ret[:,1][inonzero] * self.filters[i][:,1][inonzero])
+                ret[i] = np.sum(ret[:,1][inonzero] * self.filters[i][:,1][inonzero])
                 if self.config['GENERATOR-RADUNITS'] in ['rel', 'rif', 'V']:
                     # Average over the filter
-                    bandint[i] /= inonzero.size
-            return bandint
+                    ret[i] /= inonzero.size
+        gc.collect()
+        return ret
 
     def run_forward(self, cfg):
         """

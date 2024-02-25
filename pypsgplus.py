@@ -87,14 +87,14 @@ def driver(basecfg, outputdir, pnames, pmin, pmax, log,
     if verb:
         time_start = U.tprint("Beginning retrieval\n")
 
-    pool = mp.Pool(ncores, maxtasksperchild=200)
+    pool = mp.Pool(ncores)
     retriever = R.pyspgRetrieval(basecfg, pnames, pmin, pmax, log, 
                                  wav, data, uncert, filters, algorithm, alg_kwargs, 
                                  PTfunc, nPT, Tmin, Tmax, 
                                  psgserver=psg_url, api_key=api_key, pypsg_timeout=pypsg_timeout, 
                                  pool=pool, outputdir=outputdir, verb=verb)
 
-    # Set up LISA object
+    # Set up LISA object - reduces overhead to do this separate from pypsgRetrieval object
     samp = lisa.run(retriever.algorithm, **retriever.alg_kwargs)
     samp.make_plots()
 
