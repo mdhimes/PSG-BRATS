@@ -252,7 +252,7 @@ class pyspgRetrieval:
             ret = np.zeros(len(self.filters), dtype=float)
             for i in range(len(self.filters)):
                 inonzero = np.where(self.filters[i][:,1] > 0)[0]
-                ret[i] = np.sum(ret[:,1][inonzero] * self.filters[i][:,1][inonzero])
+                ret[i] = np.sum(res[:,1][inonzero] * self.filters[i][:,1][inonzero])
                 if self.config['GENERATOR-RADUNITS'] in ['rel', 'rif', 'V']:
                     # Average over the filter
                     ret[i] /= inonzero.size
