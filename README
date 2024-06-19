@@ -19,5 +19,6 @@ And after that completes,
     cd modules/pypsg
     pip install .
     cd ../LISA
+    make all
     python setup.py install
 
