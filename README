@@ -1,9 +1,7 @@
-Note: README is a work in progress
-
-pypsgplus - a Bayesian retrieval package for the NASA Planetary Spectrum Generator
+PSG-BRATS: PSG Bayesian Real-time Atmospheric retrieval tool
+"The code that is gleeful for retrieval"
 Primary author: Michael D. Himes
 
-See the examples directory for basic examples.  The .py files run the code, while the associated .cfg file sets all code parameters and the .psg file sets the general PSG configuration file.
 
 The current LICENSE is a temporary placeholder until a more permissive open-source license is decided.
 
@@ -13,7 +11,7 @@ How to install
 1. Create a Python environment with the package versions specified in environment.yml.  If using conda, this can be accomplished via
     conda env create -f environment.yml
 And after that completes,
-    conda activate pypsgplus
+    conda activate psgbrats
 
 2. Install pypsg and LISA into the environment:
     cd modules/pypsg
@@ -22,3 +20,11 @@ And after that completes,
     make all
     python setup.py install
 
+
+Examples
+--------
+See the 'example' directory for multiple examples.  In each directory, there will be
+- data.txt: the target data to retrieve on.
+- *.psg: the fiducial configuration file for the retrieval.
+- *.cfg: the PSG-BRATS configuration file, which specifies the parameters of the retrieval for a given Bayesian algorithm.
+- *.py: a basic script to launch the retrieval using a given Bayesian algorithm.
