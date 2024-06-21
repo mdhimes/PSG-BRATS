@@ -1,7 +1,17 @@
 import numpy as np
-import dnest4
-import pypolychord
-from pypolychord.priors import UniformPrior
+
+# Try to import relevant algorithms
+try:
+    import dnest4
+except:
+    dnest4 = None
+
+try:
+    import pypolychord
+    from pypolychord.priors import UniformPrior
+except:
+    pypolychord = None
+    UniformPrior = None
 
 
 def dnest4_prior(ndim, pmin, pmax):
