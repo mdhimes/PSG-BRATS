@@ -26,7 +26,7 @@ class pyspgRetrieval:
     def __init__(self, basecfg, pnames, pmin, pmax, log, 
                        wav, data, uncert, filters, algorithm, alg_kwargs, 
                        PTfunc=None, nPT=0, Tmin=None, Tmax=None, 
-                       psgserver='http://localhost:3000/api.php', api_key=None, pypsg_timeout=120,
+                       psgserver=['http://localhost:3000/api.php'], api_key=None, pypsg_timeout=120,
                        pool=None, outputdir='./output', verb=1):
         """
         Inputs
@@ -98,9 +98,10 @@ class pyspgRetrieval:
             self.watm = None
 
         # Initialize connection with PSG
-        self.psg = pypsg.PSG(server_url=psgserver, api_key=api_key, timeout_seconds=pypsg_timeout, 
-                             default_config=os.path.abspath(self.basecfg))
-        self.config = copy.deepcopy(self.psg.default_config)
+        self.psg = [pypsg.PSG(server_url=psgserver[isrv], api_key=api_key, timeout_seconds=pypsg_timeout, 
+                              default_config=os.path.abspath(self.basecfg)) 
+                    for isrv in range(len(psgserver))]
+        self.config = copy.deepcopy(self.psg[0].default_config)
         self.wavelength = self.run_forward(self.config)['spectrum'][:,0]
 
         if self.filters is not None:
@@ -242,7 +243,9 @@ class pyspgRetrieval:
         """
         Worker function for calculating the forward model in parallel.
         """
-        pid = os.getpid()
+        # Determine which PSG instance to use
+        # -1 because worker identity is 1-based
+        worker_id = (mp.current_process()._identity[0] - 1) % len(self.psg)
         self.update_config(params)
         res = self.run_forward(self.config)['spectrum']
         if self.filters is None:
@@ -259,26 +262,27 @@ class pyspgRetrieval:
         gc.collect()
         return ret
 
-    def run_forward(self, cfg):
+    def run_forward(self, cfg, wid=0):
         """
         Runs the PSG configuration file, which may involve retrieving an intermediate configuration file.
 
         Inputs
         ------
         cfg: string, or dictionary.  PSG configuration file to be submitted via pypsg.
+        wid: int. Worker ID.  Determines which PSG to submit the config.
         """
         if self.verb > 5:
             start = time.time()
         cfg = copy.deepcopy(cfg)
         if self.watm == 'y':
-            modcfg = self.psg.run(cfg, watm=self.watm, otype='cfg')['config']
+            modcfg = self.psg[wid].run(cfg, watm=self.watm, otype='cfg')['config']
             # Update the original config
-            modcfg = self.psg.config_str_to_dict(modcfg)
+            modcfg = self.psg[wid].config_str_to_dict(modcfg)
             for k in modcfg.keys():
                 if k in U.watm_config_keys:
                     cfg[k] = modcfg[k]
         # Run the config
-        result = self.psg.run(cfg)
+        result = self.psg[wid].run(cfg)
         if self.verb > 5:
             end = time.time()
             _ = U.tprint("Running config took {:.2g} sec".format(end-start))

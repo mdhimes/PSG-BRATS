@@ -109,10 +109,14 @@ def load_config(cfg):
                 Tmax = conf.getfloat('Tmax')
             except:
                 Tmax = None
-            psg_url = conf['psg_url']
+            psg_url = conf['psg_url'].split('\n')
+            if '\n' in psg_url:
+                psg_url = [foo.strip() for foo in psg_url.split('\n')]
+            elif ',' in psg_url:
+                psg_url = [foo.strip() for foo in psg_url.split(',')]
             api_key = conf['api_key']
             pypsg_timeout = conf.getint("pypsg_timeout")
-            if api_key is None and psg_url == 'https://psg.gsfc.nasa.gov/api.php':
+            if api_key is None and 'https://psg.gsfc.nasa.gov/api.php' in psg_url:
                 raise ValueError("The main PSG server may only be used with an API key.")
     return basecfg, outputdir, pnames, pmin, pmax, log, \
            wav, data, uncert, filters, algorithm, alg_kwargs, \
