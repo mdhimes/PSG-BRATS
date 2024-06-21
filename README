@@ -17,7 +17,7 @@ And after that completes,
     cd modules/pypsg
     pip install .
     cd ../LISA
-    make all
+    make -k all
     python setup.py install
 
 
