@@ -22,6 +22,9 @@ def uniform(p, T0):
     """
     return np.zeros(p.size) + T0
 
+def isothermal(p, T0):
+    # Alias for `uniform` PT profile
+    return uniform(p, T0)
 
 def adiabat(p, gamma, T0, logp0):
      """
