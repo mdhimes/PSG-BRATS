@@ -152,7 +152,9 @@ def load_algorithm_kwargs(conf, algorithm):
                                          "but it is not found in the supplied"+\
                                          " configuration file."
             continue
-        if not np.any([v.isalpha() for v in val if v != 'e']):
+        if val.lower() in ['true', 't', 'false', 'f']:
+            val = bool(val)
+        elif not np.any([v.isalpha() for v in val if v != 'e']):
             # Not a simple string - load the value
             try:
                 # simple value?
