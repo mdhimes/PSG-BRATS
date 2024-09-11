@@ -146,6 +146,42 @@ pt_keys  = ['PT-GAMMA', 'PT-T0', 'PT-LOGP0', # 'adiabat' model
 algorithms = ['demc', 'dream', 'emcee', 'snooker', # MCMC
               'dnest4', 'dynesty', 'multinest', 'polychord', 'ultranest'] # Nested sampling
 
+wave_units = {'um' : "Wavelength ($\mathrm{\mu}$m)",
+              'nm' : "Wavelength (nm)",
+              'mm' : "Wavelength (mm)",
+              'An' : "Wavelength ($\mathrm{\AA}$)",
+              'cm' : "Wavenumber (cm^${-1}$)",
+              'MHz' : "Frequency (MHz)",
+              'GHz' : "Frequency (GHz)",
+              'kHz' : "Frequency (kHz)"}
+
+rad_units = {'Wsrm2um' : 'Spectral radiance (W / sr / m$^2$ / $\mathrm{\mu}$m)',
+             'Wsrm2cm' : 'Spectral radiance (W / sr / m$^2$ / cm$^{-1}$)',
+             'Wsrm2Hz' : 'Spectral radiance (W / sr / m$^2$ / Hz)',
+             'Jyarc' : 'Spectral radiance (Jy / arcsec$^2$)',
+             'K' : 'Spectral radiance (K brightness)',
+             'KRJ' : 'Spectral radiance (K Rayleigh-Jeans)',
+             'Wsrm2' : 'Radiance (W / sr / m$^2$)',
+             'Ra' : 'Radiance (Rayleigh)',
+             'Wsrum' : 'Spectral intensity (W / sr / $\mathrm{\mu}$m)',
+             'Wsrcm' : 'Spectral intensity (W / sr / cm$^{-1}$)',
+             'Wsr' : 'Radiant intensity (W / sr)',
+             'Wum' : 'Spectral flux (W / $\mathrm{\mu}$m)',
+             'Wcm' : 'Spectral flux (W / cm$^{-1}$)',
+             'W' : 'Radiant flux (W)',
+             'ph' : 'Radiant flux (Photons / s)',
+             'pt' : 'Integrated flux (Photons)',
+             'pm' : 'Integrated flux (Photons measured)',
+             'Wm2' : 'Irradiance (W / m$^2$)',
+             'erg' : 'Irradiance (erg/s / cm$^2$)',
+             'Wm2um' : 'Spectral irradiance (W / m$^2$ / $\mathrm{\mu}$m)',
+             'Wm2cm' : 'Spectral irradiance (W / m$^2$ / cm$^{-1}$)',
+             'Jy' : 'Spectral irradiance (Jy)',
+             'mJy' : 'Spectral irradiance (mJy)',
+             'rel' : 'Contrast',
+             'rif' : 'Transmittance (I/F)',
+             'V' : 'Magnitude'}
+
 
 def enumerated_product(*args):
     """

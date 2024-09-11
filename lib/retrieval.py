@@ -421,4 +421,24 @@ class pyspgRetrieval:
             strabuns = np.array2string(abuns, precision=3).replace('\n', '').replace('[', '').replace(']', '').split()
             self.config[key] = ','.join(lay[:2] + strabuns)
 
+    def plot_best_fit(self):
+        """
+        Produces a plot of the best-fit spectrum with the data.
+        """
+        bestfit = self.forward_model(self.bestp)[0]
+        plt.errorbar(self.wav, self.data, yerr=self.uncert, label='Data')
+        plt.plot(self.wavelength, bestfit, label='Best fit', lw=2, zorder=100)
+        plt.legend(loc='best')
+        plt.xlabel(U.wave_units[self.config['GENERATOR-RANGEUNIT']])
+        plt.ylabel(U.rad_units[self.config['GENERATOR-RADUNITS']])
+        plt.savefig(os.path.join(self.outputdir, 'bestfit'))
+        plt.close()
+        return
+
+
+
+
+
+
+
 

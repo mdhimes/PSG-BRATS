@@ -98,6 +98,10 @@ def driver(basecfg, outputdir, pnames, pmin, pmax, log,
     samp = lisa.run(retriever.algorithm, **retriever.alg_kwargs)
     samp.make_plots()
 
+    retriever.bestp = samp.bestp
+
+    retriever.plot_best_fit()
+
     print("\n")
     time_end = U.tprint("Retrieval complete")
     tot_time = U.time_elapsed(time_start, time_end)
