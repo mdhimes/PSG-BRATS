@@ -14,6 +14,8 @@ spt: "Slope-PT" profile based on Piette & Madhusudhan 2020.
 
 import numpy as np
 import scipy.constants as sc
+import scipy.interpolate as si
+from scipy.ndimage import gaussian_filter1d
 
 
 def uniform(p, T0):
