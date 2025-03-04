@@ -179,6 +179,7 @@ rad_units = {'Wsrm2um' : 'Spectral radiance (W / sr / m$^2$ / $\mathrm{\mu}$m)',
              'Jy' : 'Spectral irradiance (Jy)',
              'mJy' : 'Spectral irradiance (mJy)',
              'rel' : 'Contrast',
+             'ppm' : 'Contrast (ppm)',
              'rif' : 'Transmittance (I/F)',
              'V' : 'Magnitude'}
 
