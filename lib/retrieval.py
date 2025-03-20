@@ -363,9 +363,14 @@ class pyspgRetrieval:
         """
         val = [val[self.iPT[i]] for i in range(self.nPT)]
         temp = self.PTfunc(self.pressure, *val)
-        # Prevent negative values by choosing the closest non-negative value
+        # Prevent negative values by choosing the closest non-negative value, if possible
         mask = temp < 0
-        temp[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), temp[~mask])
+        if mask.sum() < temp.size:
+            temp[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), temp[~mask])
+        else:
+            # All values are negative - set it to 1 everywhere so the result is still valid 
+            # even if Tmin is not specified
+            temp[:] = 1.
         if self.Tmin is not None:
             temp[temp < self.Tmin] = self.Tmin
         if self.Tmax is not None:
