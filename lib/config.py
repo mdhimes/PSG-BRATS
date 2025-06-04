@@ -153,7 +153,7 @@ def load_algorithm_kwargs(conf, algorithm):
                                          " configuration file."
             continue
         if val.lower() in ['true', 't', 'false', 'f']:
-            val = bool(val)
+            val = 't' in val.lower()
         elif not np.any([v.isalpha() for v in val if v != 'e']):
             # Not a simple string - load the value
             try:
