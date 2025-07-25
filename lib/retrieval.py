@@ -239,15 +239,23 @@ class pyspgRetrieval:
         gc.enable()
         return res
 
-    def _worker(self, params):
+    def _worker(self, params, manual_gc=True):
         """
         Worker function for calculating the forward model in parallel.
+        
+        Inputs
+        ------
+        params: array, floats.  Retrieval model parameters.
+        manual_gc: bool.  Determines whether to manually garbage collect.
         """
         # Determine which PSG instance to use
         # -1 because worker identity is 1-based
-        worker_id = (mp.current_process()._identity[0] - 1) % len(self.psg)
+        try:
+            worker_id = (mp.current_process()._identity[0] - 1) % len(self.psg)
+        except:
+            worker_id = 0
         self.update_config(params)
-        res = self.run_forward(self.config)['spectrum']
+        res = self.run_forward(self.config, worker_id)['spectrum']
         if self.filters is None:
             ret = res[:,1] # Keep full resolution spectrum
         else:
@@ -259,7 +267,8 @@ class pyspgRetrieval:
                 if self.config['GENERATOR-RADUNITS'] in ['rel', 'rif', 'V']:
                     # Average over the filter
                     ret[i] /= inonzero.size
-        gc.collect()
+        if manual_gc:
+            gc.collect()
         return ret
 
     def run_forward(self, cfg, wid=0):
@@ -430,7 +439,11 @@ class pyspgRetrieval:
         """
         Produces a plot of the best-fit spectrum with the data.
         """
-        bestfit = self.forward_model(self.bestp)[0]
+        #bestfit = self.forward_model(self.bestp)[0]
+        bestfit = self._worker(self.bestp, manual_gc=False)
+        cfg_str = self.psg[0].config_dict_to_str(self.config)
+        with open(os.path.join(self.outputdir, 'bestfit.cfg'), 'w') as foo:
+            foo.write(cfg_str)
         plt.errorbar(self.wav, self.data, yerr=self.uncert, label='Data')
         plt.plot(self.wavelength, bestfit, label='Best fit', lw=2, zorder=100)
         plt.legend(loc='best')
