@@ -137,11 +137,6 @@ tea_molecules = ['H', 'He', 'C', 'N', 'O', 'Na', 'K', 'H2', 'CO', 'CO2',
                  'OH', 'TiO', 'VO', 'MgH', 'PH3', 'HCl', 'SiH', 'SiO', 'HF']
 tea_keys = ['TEA-MH', 'TEA-C2O']
 
-# DO NOT change the order of these, without also fixing the logic in PT.py!
-pt_keys  = ['PT-GAMMA', 'PT-T0', 'PT-LOGP0', # 'adiabat' model
-            'PT-KAPPA', 'PT-GAMMA1', 'PT-GAMMA2', 'PT-ALPHA', 'PT-BETA', # 'line' model
-            'PT-DT-BOT-32', 'PT-DT-32-10', 'PT-DT-10-0', 'PT-DT-0-1', 'PT-DT-1-01', 'PT-DT-01-001', 
-            'PT-DT-001-TOP'] #'spt' model
 
 algorithms = ['demc', 'dream', 'emcee', 'snooker', # MCMC
               'dnest4', 'dynesty', 'multinest', 'polychord', 'ultranest'] # Nested sampling

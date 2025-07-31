@@ -4,6 +4,7 @@ import ctypes
 import functools
 import gc
 import glob
+import inspect
 import itertools
 import time
 import h5py
@@ -25,7 +26,7 @@ class pyspgRetrieval:
     """
     def __init__(self, basecfg, pnames, pmin, pmax, log, 
                        wav, data, uncert, filters, algorithm, alg_kwargs, 
-                       PTfunc=None, nPT=0, Tmin=None, Tmax=None, 
+                       PTfunc=None, Tmin=None, Tmax=None, 
                        psgserver=['http://localhost:3000/api.php'], api_key=None, pypsg_timeout=120,
                        pool=None, outputdir='./output', verb=1):
         """
@@ -43,8 +44,6 @@ class pyspgRetrieval:
         alg_kwargs: dictionary.  Key-value pairs of parameters for the chosen `algorithm`.
         PTfunc: function.  Pressure-temperature profile to use.
                            Default: None (PT profile is not changed)
-        nPT: int.  Number of parameters for `PTfunc`.
-                   Default: 0
         Tmin: float. Maximum allowed temperature in thermal profile.  Use None for no limit.
                      Default: None
         Tmax: float. Minimum allowed temperature in thermal profile.  Use None for no limit.
@@ -69,7 +68,7 @@ class pyspgRetrieval:
 
         # Read in arguments
         self.basecfg   = basecfg
-        self.pnames    = pnames
+        self.pnames    = np.array(pnames)
         self.pmin      = np.array(pmin)
         self.pmax      = np.array(pmax)
         self.log       = np.array(log)
@@ -82,7 +81,6 @@ class pyspgRetrieval:
         self.algorithm  = algorithm
         self.alg_kwargs = alg_kwargs
         self.PTfunc     = PTfunc
-        self.nPT        = nPT
         self.Tmin       = Tmin
         self.Tmax       = Tmax
         self.outputdir  = outputdir
@@ -120,10 +118,8 @@ class pyspgRetrieval:
             if self.verb:
                 U.tprint("No filters provided.  Assuming the data's wavelength grid matches the forward model's wavelength grid exactly.")
 
-        # Load pressure grid, if needed
-        if any(x in self.pnames for x in U.pt_keys):
-            if PTfunc is None:
-                raise ValueError("No PTfunc specified, but free parameters include PT parameters.")
+        # Set up things related to T(p) profile
+        if self.PTfunc is not None:
             nlayer = int(self.config['ATMOSPHERE-LAYERS'])
             self.pressure = np.zeros(nlayer, dtype=float) + np.nan
             for k in range(nlayer):
@@ -132,44 +128,49 @@ class pyspgRetrieval:
                 self.pressure[k] = float(layer[0])
             assert not np.isnan(self.pressure).sum(), "Error loading pressure grid."
             # Ensure correct order of parameters
+            self.PTparams = list(inspect.signature(self.PTfunc).parameters.keys())[1:]
+            if self.PTfunc.__name__ == 'line':
+                # The last 6 parameters have been made static in config.py
+                self.PTparams = self.PTparams[:-6]
+            self.nPT = len(self.PTparams)
             self.iPT = np.zeros(self.nPT, dtype=int)
-            if PTfunc.__name__ == 'adiabat':
-                self.iPT[0] = self.pnames.index('PT-GAMMA')
-                self.iPT[1] = self.pnames.index('PT-T0')
-                self.iPT[2] = self.pnames.index('PT-LOGP0')
-            elif PTfunc.__name__ == 'line':
-                self.iPT[0] = self.pnames.index('PT-KAPPA')
-                self.iPT[1] = self.pnames.index('PT-GAMMA1')
-                self.iPT[2] = self.pnames.index('PT-GAMMA2')
-                self.iPT[3] = self.pnames.index('PT-ALPHA')
-                self.iPT[4] = self.pnames.index('PT-BETA')
-            elif PTfunc.__name__ == 'spt':
-                self.iPT[0] = self.pnames.index('PT-T0')
-                self.iPT[1] = self.pnames.index('PT-DT-BOT-32')
-                self.iPT[2] = self.pnames.index('PT-DT-32-10')
-                self.iPT[3] = self.pnames.index('PT-DT-10-0')
-                self.iPT[4] = self.pnames.index('PT-DT-0-1')
-                self.iPT[5] = self.pnames.index('PT-DT-1-01')
-                self.iPT[6] = self.pnames.index('PT-DT-01-001')
-                self.iPT[7] = self.pnames.index('PT-DT-001-TOP')
-            # Ensure that `iPT` is the integers in [0, nPT)
-            if self.nPT > 1:
-                self.iPT -= self.iPT.min()
-                for n in range(1, self.nPT):
-                    nmin = self.iPT[self.iPT >= n].min()
-                    if nmin != n:
-                        self.iPT[self.iPT >= n] -= nmin - n
+            for ipar in range(self.nPT):
+                # Find index for each relevant parameter
+                # Search both for dash- and underscore-separated
+                try:
+                    self.iPT[ipar] = self.PTparams.index(self.pnames[ipar].replace('-', '_'))
+                except:
+                    raise ValueError("PT function `" + self.PTfunc.__name__ + \
+                                "` was specified, but required parameter `" + \
+                                self.PTparams[ipar] + \
+                                "` was not found among the provided parameters " + \
+                                str(self.pnames)+".")
+            # Find minimum iPT that is not SURFACE-TEMPERATURE or ATMOSPHERE-PRESSURE
+            self.iPTmin = self.iPT.min()
+            while self.pnames[self.iPTmin] in ['SURFACE-TEMPERATURE', 'ATMOSPHERE-PRESSURE']:
+                self.iPTmin = self.iPT[self.iPT > self.iPTmin].min()
             self.iPT = self.iPT.tolist()
 
         # Set up TEA grid interpolator if using TEA chemistry model
         if any(x in self.pnames for x in U.tea_keys):
             # Sanity checks
             assert self.watm != 'y', "Cannot use both the Kempton and TEA chemistry models in the same retrieval."
+            # Indices of TEA parameters
+            self.iTEA = np.zeros(len(U.tea_keys), dtype=int)
+            for i in range(self.iTEA.size):
+                try:
+                    self.iTEA[i] = U.tea_keys.index(self.pnames[i])
+                except:
+                    raise ValueError("Using at least one TEA parameter but at least " +\
+                                      "one is missing.\nSpecified parameters: " +\
+                                      str(self.pnames)+"\nMissing TEA parameter: " +\
+                                      U.tea_keys[i])
+            self.iTEAmin = self.iTEA.min()
+            self.iTEA = self.iTEA.tolist()
+            # T(p) profile must be set before TEA is used
             if self.PTfunc is not None:
-                for x in self.pnames:
-                    if x in U.pt_keys:
-                        assert self.pnames.index(x) < self.pnames.index(U.tea_keys[0]), \
-                               "PT parameters must come before TEA parameters."
+                assert self.iPTmin < self.iTEAmin, "At least one PT parameter must " +\
+                                                   "come before the TEA parameters."
             tea_data = np.load(os.path.join(os.path.dirname(__file__), '..', 'data', 'TEA_grid.npz'))
             points = [tea_data['press'], tea_data['temp'], tea_data['MH'], tea_data['C2O']]
             grid = np.stack([tea_data[mol] for mol in U.tea_molecules], axis=-1)
@@ -312,33 +313,35 @@ class pyspgRetrieval:
                 p = 10**params[i]
             else:
                 p = params[i]
+            
+            # Update atmospheric profile for this molecule
             if self.pnames[i] in U.molecules:
-                # Update atmospheric profile for this molecule
                 self.update_molecule(self.pnames[i], p)
+            
+            # Update atmospheric layers w/ Kempton chemistry model
             elif self.pnames[i] in U.kempton_keys:
-                # Update atmospheric layers w/ Kempton chemistry model
                 self.update_kempton(self.pnames[i], p)
+            
+            # Update atmospheric layers w/ TEA chemistry model
             elif self.pnames[i] in U.tea_keys:
-                # Update atmospheric layers w/ TEA chemistry model
-                if i < len(params) - 1:
-                    if self.pnames[i+1] in U.tea_keys:
-                        self.update_tea(self.pnames[i:i+2], params[i:i+2])
-                elif i > 0:
-                    if self.pnames[i-1] in U.tea_keys:
-                        continue
-                else:
-                    raise ValueError("When using TEA chemistry models, both " + \
-                                     "TEA parameters must occur consecutively.")
-            elif self.pnames[i] in U.pt_keys:
-                # Upate T(p) profile
-                if i > 0:
-                    if self.pnames[i-1] in U.pt_keys:
-                        continue
-                for n in range(self.nPT):
-                    assert self.pnames[i+n] in U.pt_keys, "PT parameters must occur consecutively."
-                self.update_temperature(params[i:i+self.nPT])
+                if i != self.iTEAmin:
+                    # Already processed
+                    continue
+                self.update_tea(self.pnames[self.iTEA], params[self.iTEA])
+
+            # Upate T(p) profile
+            elif self.pnames[i].replace('-', '_') in self.PTparams and \
+                 self.pnames[i] not in ['SURFACE-TEMPERATURE', 'ATMOSPHERE-PRESSURE']:
+                # We ignore SURFACE-TEMPERATURE and ATMOSPHERE-PRESSURE because they are 
+                # handled in the 'else' below, despite that they can be parameters for 
+                # T(p) functions
+                if i != self.iPTmin:
+                    # Already processed 
+                    continue
+                self.update_temperature(params[self.iPT])
+            
+            # Update config parameter
             else:
-                # Update config parameter
                 self.config[self.pnames[i]] = p
         if self.verb > 5:
             end = time.time()
@@ -370,7 +373,7 @@ class pyspgRetrieval:
         ------
         val: list/array, floats.  T(p) profile parameter values.
         """
-        val = [val[self.iPT[i]] for i in range(self.nPT)]
+        val = [val[iPT] for iPT in self.iPT]
         temp = self.PTfunc(self.pressure, *val)
         # Prevent negative values by choosing the closest non-negative value, if possible
         mask = temp < 0
@@ -389,7 +392,8 @@ class pyspgRetrieval:
             layer = self.config[key].split(',')
             layer[1] = "{:.4e}".format(temp[k])
             self.config[key] = ','.join(layer)
-        self.config['SURFACE-TEMPERATURE'] = temp[0]
+        if 'SURFACE-TEMPERATURE' not in self.pnames:
+            self.config['SURFACE-TEMPERATURE'] = temp[0]
 
     def update_kempton(self, par, val):
         """
@@ -412,6 +416,8 @@ class pyspgRetrieval:
     def update_tea(self, pars, vals):
         """
         Updates configuration file parameters for TEA chemistry model.
+        Parameter and value ordering is assumed to match the order given by 
+        tea_keys in utils.py.
         
         Inputs
         ------
@@ -419,14 +425,8 @@ class pyspgRetrieval:
         vals: list/array, floats.  Parameter values.
         """
         # Load values
-        assert len(pars) == 2, "Must supply exactly 2 parameters for TEA model."
-        assert len(vals) == 2, "Must supply exactly 2 values for TEA model."
-        if pars[0] == 'TEA-MH':
-            mh  = vals[0]
-            c2o = vals[1]
-        else:
-            mh  = vals[1]
-            c2o = vals[0]
+        mh  = vals[0]
+        c2o = vals[1]
         # Update the atmosphere layers
         for i in range(int(self.config['ATMOSPHERE-LAYERS'])):
             key = 'ATMOSPHERE-LAYER-'+str(i+1)
@@ -439,7 +439,6 @@ class pyspgRetrieval:
         """
         Produces a plot of the best-fit spectrum with the data.
         """
-        #bestfit = self.forward_model(self.bestp)[0]
         bestfit = self._worker(self.bestp, manual_gc=False)
         cfg_str = self.psg[0].config_dict_to_str(self.config)
         with open(os.path.join(self.outputdir, 'bestfit.cfg'), 'w') as foo:

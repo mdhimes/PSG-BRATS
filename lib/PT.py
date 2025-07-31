@@ -2,6 +2,15 @@
 Contains pressure--temperature functions.
 All functions must have pressure as the first parameter.
 
+If a function requires additional parameters that remain static during 
+the retrieval (as in `line`), then that should be handled in config.py.
+
+The parameter names as specified here are the parameter names that are 
+to be used in the BRATS configuration file.  Since dashes are not 
+allowed in variable names but most PSG configuration parameters 
+use them, the BRATS configuration file parameters can use dashes in place 
+of underscores for consistency with the other PSG parameters.
+
 uniform: Isothermal profile.
 
 adiabat: Adiabatic profile.
@@ -18,25 +27,27 @@ import scipy.interpolate as si
 from scipy.ndimage import gaussian_filter1d
 
 
-def uniform(p, T0):
+def uniform(p, PT_T0):
     """
     Returns a uniform temperature profile.
     """
-    return np.zeros(p.size) + T0
+    return np.zeros(p.size) + PT_T0
 
-def isothermal(p, T0):
+
+def isothermal(p, PT_T0):
     # Alias for `uniform` PT profile
-    return uniform(p, T0)
+    return uniform(p, PT_T0)
 
-def adiabat(p, gamma, T0, logp0):
+
+def adiabat(p, PT_GAMMA, PT_T0, PT_LOGP0):
      """
      Calculates an adiabatic temperature profile.
      """
-     T = T0 / (1 + (gamma - 1) / gamma * np.log(10**logp0 / p))
+     T = PT_T0 / (1 + (PT_GAMMA - 1) / PT_GAMMA * np.log(10**PT_LOGP0 / p))
      return T
 
 
-def line(pressure, kappa,  gamma1, gamma2, alpha, beta, 
+def line(p, PT_KAPPA,  SURFACE_TEMPERATURE, PT_GAMMA1, PT_GAMMA2, PT_ALPHA, PT_BETA, 
          R_star,   T_star, sma,    grav,   T_int=100, T_int_type='thorngren'):
   '''
   Generates a PT profile based on input free parameters and pressure array.
@@ -46,13 +57,13 @@ def line(pressure, kappa,  gamma1, gamma2, alpha, beta,
 
   Inputs
   ------
-  pressure: 1D float ndarray
+  p: 1D float ndarray
      Array of pressure values in bars.
-  kappa : float, in log10. Planck thermal IR opacity in units cm^2/gr
-  gamma1: float, in log10. Visible-to-thermal stream Planck mean opacity ratio.
-  gamma2: float, in log10. Visible-to-thermal stream Planck mean opacity ratio.
-  alpha : float.           Visible-stream partition (0.0--1.0).
-  beta  : float.           A 'catch-all' for albedo, emissivity, and day-night
+  PT_KAPPA : float, in log10. Planck thermal IR opacity in units cm^2/gr
+  PT_GAMMA1: float, in log10. Visible-to-thermal stream Planck mean opacity ratio.
+  PT_GAMMA2: float, in log10. Visible-to-thermal stream Planck mean opacity ratio.
+  PT_ALPHA : float.           Visible-stream partition (0.0--1.0).
+  PT_BETA  : float.           A 'catch-all' for albedo, emissivity, and day-night
                            redistribution (on the order of unity)
   R_star: Float
      Stellar radius (in meters).
@@ -95,12 +106,12 @@ def line(pressure, kappa,  gamma1, gamma2, alpha, beta,
   >>> g  = 2192.8        # cm s-2
 
   >>> # Fitting parameters:
-  >>> kappa  = -1.5   # log10(3e-2)
-  >>> gamma1 = -0.8   # log10(0.158)
-  >>> gamma2 = -0.8   # log10(0.158)
-  >>> alpha  = 0.5
-  >>> beta   = 1.0
-  >>> T0 = pt.PT(p, kappa, gamma1, gamma2, alpha, beta, Rs, Ts, Ti, a, g)
+  >>> PT_KAPPA  = -1.5   # log10(3e-2)
+  >>> PT_GAMMA1 = -0.8   # log10(0.158)
+  >>> PT_GAMMA2 = -0.8   # log10(0.158)
+  >>> PT_ALPHA  = 0.5
+  >>> PT_BETA   = 1.0
+  >>> T0 = pt.PT(p, PT_KAPPA, PT_GAMMA1, PT_GAMMA2, PT_ALPHA, PT_BETA, Rs, Ts, Ti, a, g)
 
   >>> plt.figure(1)
   >>> plt.clf()
@@ -125,10 +136,10 @@ def line(pressure, kappa,  gamma1, gamma2, alpha, beta,
                         consistency with other PT models
   2019-09-10  mhimes    Added T_int calculation from Thorngren et al. (2019)
   '''
-  # Convert kappa, gamma1, gamma2 from log10
-  kappa  = 10**(kappa )
-  gamma1 = 10**(gamma1)
-  gamma2 = 10**(gamma2)
+  # Convert PT_KAPPA, PT_GAMMA1, PT_GAMMA2 from log10
+  PT_KAPPA  = 10**(PT_KAPPA )
+  PT_GAMMA1 = 10**(PT_GAMMA1)
+  PT_GAMMA2 = 10**(PT_GAMMA2)
 
   if T_int_type == 'thorngren':
       # Planetary internal temperature (Thorngren et al. 2019)
@@ -138,18 +149,18 @@ def line(pressure, kappa,  gamma1, gamma2, alpha, beta,
       T_int = 1.24 * T_eq * np.exp(-(np.log(F) - 0.14)**2 / 2.96)
 
   # Stellar input temperature (at top of atmosphere):
-  T_irr = beta * (R_star / (2.0*sma))**0.5 * T_star
+  T_irr = PT_BETA * (R_star / (2.0*sma))**0.5 * T_star
 
   # Gray IR optical depth:
-  tau = kappa * (pressure*1e6) / grav # Convert bars to barye (CGS)
+  tau = PT_KAPPA * (p*1e6) / grav # Convert bars to barye (CGS)
 
-  xi1 = xi(gamma1, tau)
-  xi2 = xi(gamma2, tau)
+  xi1 = xi(PT_GAMMA1, tau)
+  xi2 = xi(PT_GAMMA2, tau)
 
   # Temperature profile (Eq. 13 of Line et al. 2013):
   temperature = (0.75 * (T_int**4 * (2.0/3.0 + tau) +
-                         T_irr**4 * (1-alpha) * xi1 +
-                         T_irr**4 * alpha     * xi2 ) )**0.25
+                         T_irr**4 * (1-PT_ALPHA) * xi1 +
+                         T_irr**4 * PT_ALPHA     * xi2 ) )**0.25
 
   return temperature
 
@@ -174,7 +185,8 @@ def xi(gamma, tau):
           gamma*(1 - 0.5*tau**2) * sp.expn(2, gamma*tau)              )
 
 
-def spt(p, T0, dTbot_32, dT32_10, dT10_0, dT0_1, dT1_01, dT01_001, dT001_top):
+def spt(p, PT_T0, PT_DT_BOT_32, PT_DT_32_10, PT_DT_10_0, PT_DT_0_1, 
+           PT_DT_1_01, PT_DT_01_001, PT_DT_001_TOP):
     '''
     Non-inverted atmospheric profile based on the "SPT" model of 
     Piette & Madhusudhan (2020), modified to work on arbitrary pressure grids.
@@ -183,28 +195,28 @@ def spt(p, T0, dTbot_32, dT32_10, dT10_0, dT0_1, dT1_01, dT01_001, dT001_top):
     ------
     p: 1D float ndarray
         Atmospheric pressure profile (in bar).
-    T0: float
+    PT_T0: float
         Temperature at pressure layer closest to 3.2 bar. Reference temperature 
         for the other params.
-    dTbot_32: float
+    PT_DT_BOT_32: float
         Temperature difference between the bottom of the atmosphere and the 
         pressure layer closest to 32 bar
-    dT32_10: float
+    PT_DT_32_10: float
         Temperature difference between the pressure layer closest to 32 bar and 
         the pressure layer closest to 10 bar
-    dT10_0: float
+    PT_DT_10_0: float
         Temperature difference between the pressure layer closest to 10 bar and 
         the pressure layer closest to 3.2 bar
-    dT0_1: float
+    PT_DT_0_1: float
         Temperature difference between the pressure layer closest to 3.2 bar and
         the pressure layer closest to 1 bar
-    dT1_01: float
+    PT_DT_1_01: float
         Temperature difference between the pressure layer closest to 1 bar and 
         the pressure layer closest to 0.1 bar
-    dT01_001: float
+    PT_DT_01_001: float
         Temperature difference between the pressure layer closest to 100 mbar 
         and the pressure layer closest to 10 mbar
-    dT001_top: float
+    PT_DT_001_TOP: float
         Temperature difference between the layer closest to 10 mbar and the 
         top of the atmosphere
     '''
@@ -219,14 +231,14 @@ def spt(p, T0, dTbot_32, dT32_10, dT10_0, dT0_1, dT1_01, dT01_001, dT001_top):
     ilay32  = np.argmin(np.abs(p - 32))
     ilaybot = np.argmax(p)
     # Temperatures at those layers
-    T[ilay0]   = T0
-    T[ilay10]  = T0         + dT10_0
-    T[ilay32]  = T[ilay10]  + dT32_10
-    T[ilaybot] = T[ilay32]  + dTbot_32
-    T[ilay1]   = T0         - dT0_1
-    T[ilay01]  = T[ilay1]   - dT1_01
-    T[ilay001] = T[ilay01]  - dT01_001
-    T[ilaytop] = T[ilay001] - dT001_top
+    T[ilay0]   = PT_T0
+    T[ilay10]  = PT_T0      + PT_DT_10_0
+    T[ilay32]  = T[ilay10]  + PT_DT_32_10
+    T[ilaybot] = T[ilay32]  + PT_DT_BOT_32
+    T[ilay1]   = PT_T0      - PT_DT_0_1
+    T[ilay01]  = T[ilay1]   - PT_DT_1_01
+    T[ilay001] = T[ilay01]  - PT_DT_01_001
+    T[ilaytop] = T[ilay001] - PT_DT_001_TOP
     # Linear spline interpolate
     ilays = np.array([ilaytop, ilay001, ilay01, ilay1, ilay0, ilay10, ilay32, ilaybot])
     rep = si.splrep(np.log10(p[ilays]), T[ilays], k=1)

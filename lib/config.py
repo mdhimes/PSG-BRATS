@@ -9,9 +9,9 @@ load_algorithm_kwargs: helper function to load configuration file options relate
 
 import sys, os
 import configparser
+import functools
 import glob
 import numpy as np
-from inspect import signature
 
 import lisa
 
@@ -79,28 +79,25 @@ def load_config(cfg):
             try:
                 PTfuncname = conf['PTfunc']
                 PTfunc = getattr(PT, PTfuncname)
-                nPT = len(list(signature(PTfunc).parameters.keys())) - 1
                 if PTfuncname == 'line':
-                    nPT -= 6 # 6 params will remain constant
-                    PT_kwargs = {'R_star' : conf.getfloat('R_star'), 
+                    PTkwargs = {'R_star' : conf.getfloat('R_star'), 
                                  'T_star' : conf.getfloat('T_star'), 
                                  'sma'    : conf.getfloat('sma'),
                                  'grav'   : conf.getfloat('grav')}
                     try:
-                        PT_kwargs['T_int'] = conf.getfloat('T_int')
+                        PTkwargs['T_int'] = conf.getfloat('T_int')
                     except:
                         # Using default
                         pass
                     try:
-                        PT_kwargs['T_int_type'] = conf['T_int_type']
+                        PTkwargs['T_int_type'] = conf['T_int_type']
                     except:
                         pass
                     # Set those params to be constant
-                    PTfunc = functools.partial(PTfunc, **PT_kwargs)
+                    PTfunc = functools.partial(PTfunc, **PTkwargs)
                 PTfunc.__name__ = PTfuncname
             except:
                 PTfunc = None
-                nPT = 0
             try:
                 Tmin = conf.getfloat('Tmin')
             except:
@@ -120,7 +117,7 @@ def load_config(cfg):
                 raise ValueError("The main PSG server may only be used with an API key.")
     return basecfg, outputdir, pnames, pmin, pmax, log, \
            wav, data, uncert, filters, algorithm, alg_kwargs, \
-           PTfunc, nPT, Tmin, Tmax, \
+           PTfunc, Tmin, Tmax, \
            ncores, psg_url, api_key, pypsg_timeout, verb
 
 

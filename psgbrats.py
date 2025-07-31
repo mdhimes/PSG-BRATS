@@ -23,18 +23,18 @@ def main(cfg):
     """
     basecfg, outputdir, pnames, pmin, pmax, log, \
            wav, data, uncert, filters, algorithm, alg_kwargs, \
-           PTfunc, nPT, Tmin, Tmax, \
+           PTfunc, Tmin, Tmax, \
            ncores, psg_url, api_key, pypsg_timeout, verb = C.load_config(cfg)
     retriever = driver(basecfg, outputdir, pnames, pmin, pmax, log, 
                        wav, data, uncert, filters, algorithm, alg_kwargs, 
-                       PTfunc, nPT, Tmin, Tmax, 
+                       PTfunc, Tmin, Tmax, 
                        ncores, psg_url, api_key, pypsg_timeout, verb)
     return retriever
 
 
 def driver(basecfg, outputdir, pnames, pmin, pmax, log, 
            wav, data, uncert, filters, algorithm, alg_kwargs, 
-           PTfunc, nPT, Tmin, Tmax, 
+           PTfunc, Tmin, Tmax, 
            ncores=1, psg_url='http://localhost:3000/api.php', 
            api_key=None, pypsg_timeout=60, verb=1):
     """
@@ -60,7 +60,6 @@ def driver(basecfg, outputdir, pnames, pmin, pmax, log,
     alg_kwargs: dictionary.  Key-value pairs of parameters for the chosen `algorithm`.
     PTfunc: function.  Pressure-temperature profile to use.  
                        Use None if it isn't varied.
-    nPT: int.  Number of parameters in `PTfunc`.
     Tmin: float. Maximum allowed temperature in thermal profile.  Use None for no limit.
                  Default: None
                  Note: If you have not carefully chosen your parameter space, this may 
@@ -90,7 +89,7 @@ def driver(basecfg, outputdir, pnames, pmin, pmax, log,
     pool = mp.Pool(ncores)
     retriever = R.pyspgRetrieval(basecfg, pnames, pmin, pmax, log, 
                                  wav, data, uncert, filters, algorithm, alg_kwargs, 
-                                 PTfunc, nPT, Tmin, Tmax, 
+                                 PTfunc, Tmin, Tmax, 
                                  psgserver=psg_url, api_key=api_key, pypsg_timeout=pypsg_timeout, 
                                  pool=pool, outputdir=outputdir, verb=verb)
 
