@@ -133,18 +133,20 @@ class pyspgRetrieval:
                 # The last 6 parameters have been made static in config.py
                 self.PTparams = self.PTparams[:-6]
             self.nPT = len(self.PTparams)
-            self.iPT = np.zeros(self.nPT, dtype=int)
+            self.iPT = np.zeros(self.nPT, dtype=int) - 1 # For sanity check later
+            # Find index for each relevant parameter
+            # Replace dashes with underscores, since function variables cannot have dashes
             for ipar in range(self.nPT):
-                # Find index for each relevant parameter
-                # Search both for dash- and underscore-separated
-                try:
-                    self.iPT[ipar] = self.PTparams.index(self.pnames[ipar].replace('-', '_'))
-                except:
+                for ipname in range(len(self.pnames)):
+                    if self.PTparams[ipar] == self.pnames[ipname].replace('-', '_'):
+                        self.iPT[ipar] = ipname
+                # Should have been found by now - if not, then it is missing
+                if self.iPT[ipar] < 0:
                     raise ValueError("PT function `" + self.PTfunc.__name__ + \
-                                "` was specified, but required parameter `" + \
-                                self.PTparams[ipar] + \
-                                "` was not found among the provided parameters " + \
-                                str(self.pnames)+".")
+                                     "` was specified, but required parameter `" + \
+                                     self.PTparams[ipar] + \
+                                     "` was not found among the provided parameters " + \
+                                     str(self.pnames)+".")
             # Find minimum iPT that is not SURFACE-TEMPERATURE or ATMOSPHERE-PRESSURE
             self.iPTmin = self.iPT.min()
             while self.pnames[self.iPTmin] in ['SURFACE-TEMPERATURE', 'ATMOSPHERE-PRESSURE']:
@@ -156,15 +158,17 @@ class pyspgRetrieval:
             # Sanity checks
             assert self.watm != 'y', "Cannot use both the Kempton and TEA chemistry models in the same retrieval."
             # Indices of TEA parameters
-            self.iTEA = np.zeros(len(U.tea_keys), dtype=int)
-            for i in range(self.iTEA.size):
-                try:
-                    self.iTEA[i] = U.tea_keys.index(self.pnames[i])
-                except:
+            self.iTEA = np.zeros(len(U.tea_keys), dtype=int) - 1 # For sanity check later
+            for ipar in range(self.iTEA.size):
+                for ipname in range(len(self.pnames)):
+                    if self.iTEA[ipar] == self.pnames[ipname]:
+                        self.iTEA[ipar] = ipname
+                # Should have been found by now - if not, then it is missing
+                if self.iTEA[ipar] < 0:
                     raise ValueError("Using at least one TEA parameter but at least " +\
-                                      "one is missing.\nSpecified parameters: " +\
-                                      str(self.pnames)+"\nMissing TEA parameter: " +\
-                                      U.tea_keys[i])
+                                     "one parameter is missing.\nSpecified parameters: " +\
+                                     str(self.pnames)+"\nMissing TEA parameter: " +\
+                                     U.tea_keys[ipar])
             self.iTEAmin = self.iTEA.min()
             self.iTEA = self.iTEA.tolist()
             # T(p) profile must be set before TEA is used
