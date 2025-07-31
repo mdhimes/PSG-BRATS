@@ -377,7 +377,6 @@ class pyspgRetrieval:
         ------
         val: list/array, floats.  T(p) profile parameter values.
         """
-        val = [val[iPT] for iPT in self.iPT]
         temp = self.PTfunc(self.pressure, *val)
         # Prevent negative values by choosing the closest non-negative value, if possible
         mask = temp < 0
