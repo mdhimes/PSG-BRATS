@@ -246,5 +246,81 @@ def spt(p, PT_T0, PT_DT_BOT_32, PT_DT_32_10, PT_DT_10_0, PT_DT_0_1,
     # Gaussian smoothing - sigma is 0.3 dex, Piette & Madhusudhan (2020)
     sig = 0.3 / np.abs(np.log10(p)[0] - np.log10(p)[1])
     return gaussian_filter1d(T, sigma=sig, mode='nearest')
+               
+def polynomial(p, PT_POLY_A0=0, PT_POLY_A1=0, PT_POLY_A2=0, PT_POLY_A3=0, PT_POLY_A4=0, PT_POLY_A5=0, PT_POLY_A6=0, PT_POLY_A7=0, PT_POLY_A8=0):
+    """
+    Calculates a polynomial temperature profile up to the 8th order
+
+    PT_POLY_A0: 0th order coefficient corresponding to temperature (in K) at first value of pressure array p
+    .
+    .
+    .
+    PT_POLY_A8: 8th order coefficient
+    """
+    plog = np.log(p)
+    T = np.polyval([PT_POLY_A8, PT_POLY_A7, PT_POLY_A6, PT_POLY_A5, PT_POLY_A4, PT_POLY_A3, PT_POLY_A2, PT_POLY_A1, PT_POLY_A0], plog)
+    return T
+
+
+def linear(p, PT_POLY_A0=0, PT_POLY_A1=0):
+    """
+    Calculates a linear temperature profile.
+    """
+    plog = np.log10(p)
+    T = np.polyval([PT_POLY_A1, PT_POLY_A0], plog)
+    return T
+
+
+def piecewise(p, ATMOSPHERE_PRESSURE, PT_P1, PT_P_ISO, SURFACE_TEMPERATURE, PT_T1, PT_T_ISO):
+    """
+    Generates a 3 layer PT profile with 2 linear layers and an uppermost isothermal layer.
+    The function adjusts for the surface pressure and temperature (within the bounds of pressure array p) as part of the PT profile
+
+    Inputs
+    ------
+    p: 1D float ndarray
+       Array of pressure values in bars.
+    ATMOSPHERE_PRESSURE : float, in bars. Surface pressure as defined in the PSG config. 
+                          Must be retrieved in log space in BRATS config  
+    PT_P1 : float, in bars. Pressure value at the transition point of the first and second linear layer 
+                          Must be retrieved in log space in BRATS config
+    PT_P_ISO : float, in bars. Pressure value at the transition point where the profile becomes isothermal 
+                          Must be retrieved in log space in BRATS config
+    SURFACE_TEMPERATURE : float, in Kelvin degrees. Surface pressure as defined in the PSG config.
+
+    PT_T1: float, in Kelvin degrees. Temperature at PT_P1, transition point between first and second linear layer
+
+    PT_T_ISO: float, in Kelvin degrees. Temperature at PT_P_ISO, and of the isothermal layer 
+    
+    Note: This function independently fits for the altitudes at which the temperature transitions meaning in the case where 
+        ATMOPHERE_PRESSURE < PT_P1 or PT_P_ISO > PT_P1, the retrieval may produce a "2-layer" profile instead
+    """
+    log_p = np.log10(p)
+    P0 = log_p[0] 
+    P2 = log_p[-1]
+
+    frac1 = P0 - ATMOSPHERE_PRESSURE 
+    frac2 = PT_P1 - ATMOSPHERE_PRESSURE
+    frac3 = P2 - PT_P1
+    frac4 = PT_P_ISO - PT_P1
+    T0 = SURFACE_TEMPERATURE + (PT_T1-SURFACE_TEMPERATURE)*(frac1/frac2)
+    T2 = PT_T1 + (PT_T_ISO - PT_T1)*(frac3/frac4)
+    
+    sec2 = np.where(log_p<PT_P1)
+    sec3 = np.where(log_p<PT_P_ISO)
+    sec4 = np.where(log_p>ATMOSPHERE_PRESSURE)
+
+    frac5 = log_p - P0
+    frac6 = PT_P1 - P0
+    frac7 = log_p - PT_P1
+    frac8 = P2 - PT_P1
+
+    T = T0 + (PT_T1 - T0)*(frac5/frac6)
+    Tsec2 = PT_T1 + (T2 - PT_T1)*(frac7/frac8)
+    T[sec2] = Tsec2[sec2]
+    T[sec3] = PT_T_ISO
+    T[sec4] = SURFACE_TEMPERATURE
+    
+    return T
 
 
